@@ -1,5 +1,3 @@
-
-
 import { View, TextInput, StyleSheet, Text, Image, TouchableOpacity, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import leafIcon from '../assets/images/leaf-round-svgrepo-com.png'
@@ -29,22 +27,40 @@ const Login = () => {
         if (!email || !senha) {
             Alert.alert('ERRO!', 'Preencha todos os campos obrigatórios')
             return
-        } else {
-            try {
-                const response = await axios.post('http://192.168.15.15:3001/api/login', dataForm)
-                const { token, usuario } = response.data
+        }
 
-                await AsyncStorage.setItem('token', token)
-                router.replace('/(tabs)/home')
-                Alert.alert('Sucesso', `Bem vindo, ${usuario.nome}`)
+        try {
+            const emailCheckResponse = await axios.post('http://192.168.15.15:3001/api/check-email', { email })
+            const { emailExists } = emailCheckResponse.data
 
-            } catch (error) {
-                console.error('erro de login', error);
+            if (!emailExists) {
+                Alert.alert('Erro de Login', 'E-mail não cadastrado. Por favor, verifique seu e-mail ou cadastre-se.');
+                 setDataform({ email: '', senha: '' })
+                return
+               
+            }
 
+
+
+            const response = await axios.post('http://192.168.15.15:3001/api/login', dataForm)
+            const { token, usuario } = response.data
+
+            await AsyncStorage.setItem('token', token)
+            router.replace('/(tabs)/Home')
+            Alert.alert('Sucesso', `Bem vindo, ${usuario.nome}`)
+
+        } catch (error) {
+            console.error('Erro de login ou verificação de e-mail:', error);
+            // Trate diferentes tipos de erro aqui, se necessário (ex: erro de rede, erro de credenciais)
+            if (error.response && error.response.status === 401) {
+                Alert.alert('Erro de Login', 'Credenciais inválidas. Verifique seu e-mail e senha.');
+            } else {
+                Alert.alert('Erro', 'Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.');
             }
         }
 
     }
+
 
 
     // parte lógica dos componentes
@@ -105,7 +121,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     mainContainer: {
-        height: '70%',
+        height: '55%',
         width: '90%',
         backgroundColor: '#FFFFFF'
     },

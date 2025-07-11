@@ -17,7 +17,7 @@ export default function RootLayout() {
 
         if (pathname === '/') { // 👈 só redireciona se estiver na raiz
           if (token) {
-            router.replace('/(tabs)/home');
+            router.replace('/(tabs)/Home');
           } else {
             router.replace('/Login');
           }
@@ -44,6 +44,7 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="Login" options={{ headerShown: false }} />
+      <Stack.Screen name="books/descritiveBookPage" options={{ headerShown: false }} />
     </Stack>
 
   )

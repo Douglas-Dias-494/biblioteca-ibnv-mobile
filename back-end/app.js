@@ -1,3 +1,7 @@
+
+/* eslint-env node */
+
+
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
@@ -9,12 +13,13 @@ process.on('uncaughtException', err => {
 const express = require('express');
 
 const { initialize, getConnection } = require('./config/database');
+const path = require('path')
 const cors = require('cors');
 
-
+const emailCheck = require('./routes/emailAuthLogin')
 const authRoutes = require('./routes/auth');
 const testeTokenRoute = require('./routes/token');
-// const livroRoutes = require('./routes/livros');
+const livroRoutes = require('./routes/livros');
 // const emailRoutes = require('./routes/emailRoutes');
 // const solicitacoesLivros = require('./routes/solicitacoesRoutes');
 // const solicitacoesLivrosPendentes = require('./routes/solicitacoesPendentes')
@@ -26,13 +31,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// eslint-disable-next-line no-undef
+app.use('/images', express.static(path.join(__dirname, 'public/images')))
 //++========= chamadas de endpoints
+
 app.use('/api', testeTokenRoute);
+app.use('/api', emailCheck)
 app.use('/api', authRoutes); // Rotas de login
-// app.use('/api/livros', livroRoutes);
+ app.use('/api/livros', livroRoutes);
 // app.use('/api/email', emailRoutes);
 // app.use('/api/email', solicitacoesLivrosPendentes)
 // app.use('/api/email', solicitacoesLivros);
+
 
 
 
