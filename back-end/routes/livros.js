@@ -17,11 +17,9 @@ async function buscarLivrosDisponiveis() {
   try {
     connection = await oracledb.getConnection(dbConfig);
     const sql = `SELECT ID, TITULO, AUTOR, EDITORA, ANO_PUBLICACAO, DESCRICAO, CATEGORIA,  IMAGEM_URL FROM LIVROS`;
-    console.log('SQL Executado:', sql); // Log da consulta
     const result = await connection.execute(sql, [], {
       outFormat: oracledb.OUT_FORMAT_OBJECT
     });
-    console.log('Resultados da Consulta:', result); // Log dos resultados brutos
     const livros = result.rows.map(row => ({
       livroId: row.ID,
       titulo: row.TITULO,
@@ -32,7 +30,7 @@ async function buscarLivrosDisponiveis() {
       categoria: row.CATEGORIA,
       imagem: row.IMAGEM_URL
     }));
-    console.log('Livros Mapeados:', livros); // Log dos livros mapeados
+    //console.log('Livros Mapeados:', livros); // Log dos livros mapeados
     return livros;
   } catch (err) {
     console.error('Erro ao buscar livros do Oracle:', err);

@@ -20,9 +20,11 @@ const emailCheck = require('./routes/emailAuthLogin')
 const authRoutes = require('./routes/auth');
 const testeTokenRoute = require('./routes/token');
 const livroRoutes = require('./routes/livros');
-// const emailRoutes = require('./routes/emailRoutes');
-// const solicitacoesLivros = require('./routes/solicitacoesRoutes');
-// const solicitacoesLivrosPendentes = require('./routes/solicitacoesPendentes')
+
+
+const solicitacoesLivros = require('./routes/solicitacoesRoutes');
+const emailRoutes = require('./routes/emailRoutes');
+const solicitacoesLivrosPendentes = require('./routes/solicitacoesPendentes')
 
 
 
@@ -39,9 +41,9 @@ app.use('/api', testeTokenRoute);
 app.use('/api', emailCheck)
 app.use('/api', authRoutes); // Rotas de login
  app.use('/api/livros', livroRoutes);
-// app.use('/api/email', emailRoutes);
-// app.use('/api/email', solicitacoesLivrosPendentes)
-// app.use('/api/email', solicitacoesLivros);
+ app.use('/api/email', solicitacoesLivros)
+ app.use('/api/email', solicitacoesLivrosPendentes)
+app.use('/api/email', emailRoutes);
 
 
 

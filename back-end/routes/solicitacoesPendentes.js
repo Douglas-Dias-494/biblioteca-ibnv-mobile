@@ -7,11 +7,9 @@ const oracledb = require('oracledb');
 
 router.get('/solicitacoes/pendentes', verificarToken, async (req, res) => {
   try {
-    if (!req?.usuario?.role || req.usuario.role !== 'admin') {
-      return res.status(403).json({ erro: "Acesso não autorizado" });
-    }
 
     const connection = await getConnection();
+    const usuarioId = req.usuario.id
     const result = await connection.execute(
       `SELECT 
         ls.ID,
@@ -24,8 +22,8 @@ router.get('/solicitacoes/pendentes', verificarToken, async (req, res) => {
       FROM LIVROS_SOLICITADOS ls
       JOIN USERS u ON u.ID = ls.USUARIO_ID
       JOIN LIVROS l ON l.ID = ls.LIVRO_ID
-      WHERE ls.STATUS = 'pendente'`,
-      [],
+      WHERE ls.STATUS = 'pendente' AND ls.USUARIO_ID = :usuarioId`,
+      [usuarioId],
       { outFormat: oracledb.OBJECT }
     );
 

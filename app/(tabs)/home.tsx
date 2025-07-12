@@ -6,10 +6,12 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { Livro } from '../../types/Livros'
+import { Solicitacao } from '@/types/Solicitacao';
 
 type RootStackParamList = {
   Home: undefined; // Home não recebe parâmetros
@@ -22,6 +24,8 @@ const Home = () => {
   const [livros, setLivros] = useState<Livro[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
 
   useEffect(() => {
@@ -40,11 +44,32 @@ const Home = () => {
     fetchLivros();
   }, []);
 
+  const fetchSolicitacoes = async () => {
+    try {
+      setIsRefreshing(true);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      const res = await axios.get("http://192.168.15.15:3001/api/email/solicitacoes/pendentes", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setSolicitacoes(res.data.solicitacoes);
+    } catch (err) {
+      console.error("Erro ao carregar solicitações:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+useEffect(() => {
+  fetchSolicitacoes();
+}, []);
+
+
   const handleBookPress = (book: Livro) => {
-  // Verifique o tipo de 'book' aqui. Deveria ser um objeto.
-  console.log("Home.tsx: Tipo de 'book' antes de stringify:", typeof book, book);
-  navigation.navigate('books/descritiveBookPage', { book: JSON.stringify(book) });
-}
+    navigation.navigate('books/descritiveBookPage', { book: JSON.stringify(book) });
+  }
 
 
   if (loading) {
@@ -103,9 +128,7 @@ const Home = () => {
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.cardBooks}
                   onPress={() => {
-                    console.log("Home.tsx: Clicado no Livro:", item.titulo || item.livroId);
                     handleBookPress(item)
-
                   }}
                 >
                   {item.imagem ? (
@@ -127,10 +150,91 @@ const Home = () => {
           </View>
         </View>
 
-        <View style={styles.MyBooks}>
-          <AntDesign name="warning" size={50} color="#005613" />
-          <Text style={{ color: '#005613' }}>Você não possui requisições ativas</Text>
-        </View>
+        {
+          solicitacoes.length === 0 ? (
+            <View style={styles.MyBooks}>
+              <AntDesign name="warning" size={50} color="#005613" />
+              <Text style={{ color: '#005613' }}>Você não possui requisições ativas</Text>
+            </View>
+          ) : (
+            <View style={styles.MyBooks}>
+              <View style={{ display: 'flex', flexDirection: 'row', gap: 150 }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Suas solicitações ativas:</Text>
+                <TouchableOpacity onPress={fetchSolicitacoes}>
+                  {isRefreshing ? (
+                    <ActivityIndicator size="small" color="black" />
+                  ) : (
+                    <FontAwesome name="refresh" size={24} color="#005613" />
+                  )}
+                </TouchableOpacity>
+
+              </View>
+              <FlatList
+                data={solicitacoes}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+
+                  <View style={{
+                    backgroundColor: '#FFF',
+                    width: 350,
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    alignItems: 'center',
+                    padding: 10,
+                    marginBottom: 10,
+                    borderRadius: 8,
+                    elevation: 2,
+                  }}>
+
+
+
+
+                    <View style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 15
+                    }}>
+
+                      <View>
+                        <Text>SITUAÇÃO: </Text>
+                      </View>
+
+                      <View style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}>
+
+                        <Image
+                          source={{ uri: `http://192.168.15.15:3001/images/${item.IMAGEM_URL}` }}
+                          style={{ width: 60, height: 90 }}
+                        />
+                        <View style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'flex-start',
+                          width: 250,
+                          marginLeft: 15
+                        }}>
+                          <Text><Text style={{ fontWeight: 'bold' }}>Título:</Text> {item.TITULO}</Text>
+                          <Text><Text style={{ fontWeight: 'bold' }}>Autor:</Text> {item.AUTOR}</Text>
+                          <Text><Text style={{ fontWeight: 'bold' }}>Categoria:</Text> {item.CATEGORIA}</Text>
+                          <Text><Text style={{ fontWeight: 'bold' }}>Ano:</Text> {item.ANO_PUBLICACAO}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                )}
+              />
+            </View>
+          )
+        }
       </View>
     </SafeAreaView>
   )
@@ -186,7 +290,7 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginTop: 15,
-    gap: 20
+    gap: 20,
   },
   loadingContainer: {
     flex: 1,
