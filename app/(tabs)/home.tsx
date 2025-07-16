@@ -155,6 +155,13 @@ useEffect(() => {
             <View style={styles.MyBooks}>
               <AntDesign name="warning" size={50} color="#005613" />
               <Text style={{ color: '#005613' }}>Você não possui requisições ativas</Text>
+              <TouchableOpacity onPress={fetchSolicitacoes}>
+                  {isRefreshing ? (
+                    <ActivityIndicator size="small" color="black" />
+                  ) : (
+                    <FontAwesome name="refresh" size={24} color="#005613" />
+                  )}
+                </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.MyBooks}>
@@ -199,7 +206,7 @@ useEffect(() => {
                     }}>
 
                       <View>
-                        <Text>SITUAÇÃO: </Text>
+                        <Text>SITUAÇÃO: <Text style={{color: '#005613'}}>Solicitado</Text> </Text>
                       </View>
 
                       <View style={{
@@ -223,8 +230,7 @@ useEffect(() => {
                         }}>
                           <Text><Text style={{ fontWeight: 'bold' }}>Título:</Text> {item.TITULO}</Text>
                           <Text><Text style={{ fontWeight: 'bold' }}>Autor:</Text> {item.AUTOR}</Text>
-                          <Text><Text style={{ fontWeight: 'bold' }}>Categoria:</Text> {item.CATEGORIA}</Text>
-                          <Text><Text style={{ fontWeight: 'bold' }}>Ano:</Text> {item.ANO_PUBLICACAO}</Text>
+                          <Text><Text style={{ fontWeight: 'bold' }}>Data do pedido:</Text> {item.DATA_SOLICITACAO_FORMATADA}</Text>
                         </View>
                       </View>
                     </View>

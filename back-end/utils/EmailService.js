@@ -17,7 +17,7 @@ const enviarEmailParaAdmins = async ({ titulo, autor, categoria, anoPublicacao, 
     const gmailOptions = {
         from: "douglas.diasesilva@gmail.com",
         to: admins,
-        subject: "Um livro foi solicitado",
+        subject: "Solicitação de Empréstimo de livro",
         text: `Um usuário solicitou o empréstimo de um livro. Seguem os detalhes:
 
 📖 Título: ${titulo}
@@ -28,7 +28,9 @@ const enviarEmailParaAdmins = async ({ titulo, autor, categoria, anoPublicacao, 
 
 📅 Ano de Publicação: ${anoPublicacao}
 
-📄 Páginas: ${paginas || "Não informado"}`
+📄 Páginas: ${paginas}
+
+    Data do pedido: `
     }
 
     try {

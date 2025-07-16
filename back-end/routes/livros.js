@@ -16,7 +16,7 @@ async function buscarLivrosDisponiveis() {
   let connection;
   try {
     connection = await oracledb.getConnection(dbConfig);
-    const sql = `SELECT ID, TITULO, AUTOR, EDITORA, ANO_PUBLICACAO, DESCRICAO, CATEGORIA,  IMAGEM_URL FROM LIVROS`;
+    const sql = `SELECT ID, TITULO, AUTOR, EDITORA, ANO_PUBLICACAO, DESCRICAO, CATEGORIA,  IMAGEM_URL, PAGINAS FROM LIVROS`;
     const result = await connection.execute(sql, [], {
       outFormat: oracledb.OUT_FORMAT_OBJECT
     });
@@ -28,7 +28,8 @@ async function buscarLivrosDisponiveis() {
       anoPublicacao: row.ANO_PUBLICACAO,
       descricao: row.DESCRICAO,
       categoria: row.CATEGORIA,
-      imagem: row.IMAGEM_URL
+      imagem: row.IMAGEM_URL,
+      paginas: row.PAGINAS
     }));
     //console.log('Livros Mapeados:', livros); // Log dos livros mapeados
     return livros;
