@@ -43,11 +43,20 @@ const Login = () => {
 
 
             const response = await axios.post('http://192.168.15.15:3001/api/login', dataForm)
-            const { token, usuario } = response.data
 
-            await AsyncStorage.setItem('token', token)
-            router.replace('/(tabs)/Home')
-            Alert.alert('Sucesso', `Bem vindo, ${usuario.nome}`)
+const { token, usuario } = response.data
+
+await AsyncStorage.setItem('token', token)
+
+// Redireciona com base na role
+if (usuario.role === 'admin') {
+  router.replace('/admin/(tabs)/Dashboard') // Altere se sua rota de admin tiver outro nome
+} else {
+  router.replace('/(tabs)/Home') // Rota padrão de usuário comum
+}
+
+Alert.alert('Sucesso', `Bem-vindo, ${usuario.nome}`)
+
 
         } catch (error) {
             console.error('Erro de login ou verificação de e-mail:', error);
