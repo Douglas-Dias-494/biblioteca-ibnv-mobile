@@ -47,7 +47,7 @@ router.get('/requested-books', async (req, res) => {
     try {
         client = await db.getConnection();
         // A tabela que criamos se chama 'solicitacoes', não 'LIVROS_SOLICITADOS'
-        const result = await client.query(`SELECT COUNT(*) AS livros_emprestados FROM solicitacoes WHERE status = 'emprestado'`);
+        const result = await client.query(`SELECT COUNT(*) AS livros_emprestados FROM solicitacoes WHERE status = 'aceito'`);
         
         const livrosEmprestados = result.rows[0].livros_emprestados;
         res.status(200).json({ livrosEmprestados });

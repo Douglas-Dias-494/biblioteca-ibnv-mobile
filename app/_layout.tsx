@@ -13,7 +13,7 @@ export default function RootLayout() {
     const verificarToken = async () => {
 
       try {
-        const token = await AsyncStorage.getItem('token')
+        const token = await AsyncStorage.removeItem('token')
 
         if (pathname === '/') { // 👈 só redireciona se estiver na raiz
           if (token) {

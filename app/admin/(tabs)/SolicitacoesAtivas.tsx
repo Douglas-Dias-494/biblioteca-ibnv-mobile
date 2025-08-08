@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert // Usaremos Alert do RN para notificações simples
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Interface para tipar os dados de cada solicitação
 interface Solicitacao {
@@ -117,6 +118,7 @@ export default function SolicitacoesAtivas() {
 
   if (error) {
     return (
+      
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchSolicitacoes}>
@@ -127,6 +129,7 @@ export default function SolicitacoesAtivas() {
   }
 
   return (
+    <SafeAreaView style={{flex: 1}}>
     <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>Solicitações de Livros Pendentes</Text>
@@ -169,6 +172,7 @@ export default function SolicitacoesAtivas() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -185,7 +189,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#005613',
     textAlign: 'center',
   },
   loadingContainer: {
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   acceptButton: {
-    backgroundColor: '#28a745', // Verde
+    backgroundColor: '#005613', // Verde
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 15,
