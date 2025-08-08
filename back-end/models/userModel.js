@@ -1,17 +1,29 @@
-const { getConnection } = require('../config/database');
-const oracledb = require('oracledb')
+const db = require('../config/database');
 
 async function findUserByEmail(email) {
-  const conn = await getConnection();
+  let client;
 
-  const result = await conn.execute(
-    `SELECT ID, NOME, EMAIL, SENHA_HASH, ATIVO, ROLE FROM USERS WHERE EMAIL = :email AND ATIVO = 1`,
-    [email],
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
-
-  await conn.close();
-  return result.rows[0];
+  try {
+    client = await db.getConnection();
+    
+    const sql = `
+      SELECT id, nome, email, senha_hash,role 
+      FROM users 
+      WHERE email = $1
+    `;
+    const values = [email];
+    
+    const result = await client.query(sql, values);
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao buscar usuário por e-mail:', error);
+    throw error;
+  } finally {
+    if (client) {
+      await client.release();
+    }
+  }
 }
 
 module.exports = { findUserByEmail };

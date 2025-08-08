@@ -1,20 +1,21 @@
-const oracledb = require('oracledb');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 let pool;
 
 async function initialize() {
   try {
-    pool = await oracledb.createPool({
+    pool = new Pool({
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      connectString: process.env.DB_CONNECT_STRING,
-      poolAlias: 'default',  // Esse nome deve bater com o que você usa no getConnection
-      poolMin: 1,
-      poolMax: 10,
-      poolIncrement: 1
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      max: 10,
+      idleTimeoutMillis: 30000, 
+      connectionTimeoutMillis: 2000,
     });
-    console.log('Pool de conexões Oracle criado com sucesso');
+    console.log('Pool de conexões PostgreSQL criado e verificado com sucesso.');
   } catch (err) {
     console.error('Erro ao criar pool de conexões:', err);
   }
@@ -26,13 +27,13 @@ async function getConnection() {
     throw new Error('Pool de conexões não inicializado');
   }
 
-  return await pool.getConnection();
+  return await pool.connect();
 }
 
 async function closePool() {
   if (pool) {
    try {
-      await pool.close(10);  // tempo para fechar conexões
+      await pool.end();  // tempo para fechar conexões
       console.log('Pool de conexões fechado');
     } catch (err) {
       console.error('Erro ao fechar pool de conexões:', err);

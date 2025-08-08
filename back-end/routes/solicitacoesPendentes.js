@@ -1,81 +1,108 @@
 const express = require('express');
 const router = express.Router();
 const verificarToken = require('../middleware/authMiddleware');
-const { getConnection } = require('../config/database');
-const oracledb = require('oracledb'); 
-
+const db = require('../config/database'); // Importa o seu módulo de banco de dados
 
 router.get('/solicitacoes/pendentes', verificarToken, async (req, res) => {
+  let client;
   try {
+    client = await db.getConnection();
+    const usuarioId = req.usuario.id;
+    const usuarioRole = req.usuario.role; // Assumindo que o role está no token JWT e é decodificado para req.usuario.role
 
-    const connection = await getConnection();
-    const usuarioId = req.usuario.id
-    const result = await connection.execute(
-      `SELECT
-    ls.ID,
-    u.EMAIL AS usuario_email,
-    l.TITULO,
-    l.AUTOR,
-    l.CATEGORIA,
-    l.ANO_PUBLICACAO,
-    l.IMAGEM_URL,
-    TO_CHAR(ls.DATA_SOLICITACAO, 'DD-MM-YY') AS DATA_SOLICITACAO_FORMATADA
-FROM
-    LIVROS_SOLICITADOS ls
-JOIN
-    USERS u ON u.ID = ls.USUARIO_ID
-JOIN
-    LIVROS l ON l.ID = ls.LIVRO_ID
-WHERE
-    ls.STATUS = 'pendente' AND ls.USUARIO_ID = :usuarioId`,
-      [usuarioId],
-      { outFormat: oracledb.OBJECT }
-    );
+    let sql;
+    let values = [];
 
+    // Lógica condicional baseada na role do usuário
+    if (usuarioRole === 'admin') { // Se o usuário logado for um ADMIN
+      sql = `
+        SELECT
+            s.id,
+            u.email AS usuario_email,
+            l.titulo,
+            l.autor,
+            l.categoria,
+            l.ano_publicacao,
+            l.imagem_url,
+            TO_CHAR(s.data_solicitacao, 'DD-MM-YY') AS data_solicitacao_formatada
+        FROM
+            solicitacoes s
+        JOIN
+            users u ON u.id = s.usuario_id
+        JOIN
+            livros l ON l.id = s.livro_id
+        WHERE
+            s.status = 'pendente'
+      `;
+      // Não há necessidade de 'values' aqui, pois não há parâmetros na query para ADMIN
+    } else { // Se for um usuário comum, mostra apenas as suas próprias solicitações
+      sql = `
+        SELECT
+            s.id,
+            u.email AS usuario_email,
+            l.titulo,
+            l.autor,
+            l.categoria,
+            l.ano_publicacao,
+            l.imagem_url,
+            s.status,
+            TO_CHAR(s.data_solicitacao, 'DD-MM-YY') AS data_solicitacao_formatada
+        FROM
+            solicitacoes s
+        JOIN
+            users u ON u.id = s.usuario_id
+        JOIN
+            livros l ON l.id = s.livro_id
+        WHERE
+            s.status = 'pendente' AND s.usuario_id = $1
+      `;
+      values = [usuarioId]; // Passa o ID do usuário como parâmetro
+    }
+
+    const result = await client.query(sql, values);
     res.json({ solicitacoes: result.rows });
-    await connection.close();
 
   } catch (error) {
     console.error('Erro ao buscar solicitações pendentes:', error);
     return res.status(500).json({ erro: "Erro ao buscar solicitações" });
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 
 router.get('/livros/:livroId/solicitacao-status', verificarToken, async (req, res) => {
-  let connection; // Declare connection outside try to ensure it's accessible in finally
-
+  let client;
   try {
-    connection = await getConnection();
+    client = await db.getConnection();
     const livroId = req.params.livroId;
-    const usuarioId = req.usuario.id; // ID do usuário logado, do seu middleware
+    const usuarioId = req.usuario.id;
 
     if (!livroId) {
       return res.status(400).json({ message: "ID do livro é obrigatório." });
     }
 
-    const result = await connection.execute(
-      `SELECT
-        STATUS
+    // Parâmetros posicionais $1 e $2
+    const sql = `
+      SELECT
+          status
       FROM
-        LIVROS_SOLICITADOS
+          solicitacoes
       WHERE
-        LIVRO_ID = :livroId AND USUARIO_ID = :usuarioId`,
-      {
-        livroId: livroId,
-        usuarioId: usuarioId
-      },
-      { outFormat: oracledb.OBJECT }
-    );
+          livro_id = $1 AND usuario_id = $2 AND status IN ('pendente', 'emprestado')
+    `;
+    const values = [livroId, usuarioId];
+    
+    const result = await client.query(sql, values);
 
     if (result.rows.length > 0) {
-      // Se encontrou uma solicitação para este livro e usuário
-      const statusSolicitacao = result.rows[0].STATUS;
+      const statusSolicitacao = result.rows[0].status;
       res.json({
         hasPendingRequest: true,
         status: statusSolicitacao
       });
     } else {
-      // Não encontrou nenhuma solicitação para este livro e usuário
       res.json({
         hasPendingRequest: false,
         status: null
@@ -86,17 +113,10 @@ router.get('/livros/:livroId/solicitacao-status', verificarToken, async (req, re
     console.error('Erro ao verificar status de solicitação do livro:', error);
     return res.status(500).json({ message: 'Erro interno do servidor ao verificar o status da solicitação.' });
   } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Erro ao fechar conexão com o banco de dados:', err);
-      }
+    if (client) {
+      client.release();
     }
   }
-}
-)
+});
 
-
-
-module.exports = router
+module.exports = router;

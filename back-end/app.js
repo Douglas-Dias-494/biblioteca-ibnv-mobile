@@ -20,11 +20,10 @@ const emailCheck = require('./routes/emailAuthLogin')
 const authRoutes = require('./routes/auth');
 const testeTokenRoute = require('./routes/token');
 const livroRoutes = require('./routes/livros');
-
-
 const solicitacoesLivros = require('./routes/solicitacoesRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const solicitacoesLivrosPendentes = require('./routes/solicitacoesPendentes')
+const availableBooks = require('./routes/bookCount')
 
 
 
@@ -39,11 +38,17 @@ app.use('/images', express.static(path.join(__dirname, 'public/images')))
 
 app.use('/api', testeTokenRoute);
 app.use('/api', emailCheck)
-app.use('/api', authRoutes); // Rotas de login
- app.use('/api/livros', livroRoutes);
- app.use('/api/email', solicitacoesLivros)
- app.use('/api/email', solicitacoesLivrosPendentes)
+app.use('/api', authRoutes);
+
+app.use('/api/livros', availableBooks)
+app.use('/api/livros', livroRoutes);
+
+app.use('/api/email', solicitacoesLivros)
+app.use('/api/email', solicitacoesLivrosPendentes)
 app.use('/api/email', emailRoutes);
+
+
+
 
 
 
@@ -56,14 +61,14 @@ app.use('/api/email', emailRoutes);
     await initialize();
     const conn = await getConnection();
     console.log('Conexão com Oracle bem-sucedida!');
-    await conn.close();
+    await conn.end();
 
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
       console.log(`Servidor rodando na porta ${PORT}`);
     });
   } catch (err) {
-    console.error('Erro ao conectar com Oracle:', err);
+    console.error('Erro ao conectar com Postgres:', err);
     process.exit(1); // Encerra o app se não conseguir conectar ao banco
   }
 })();

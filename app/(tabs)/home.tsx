@@ -1,4 +1,3 @@
-
 import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import leafIcon from '../../assets/images/leaf-round-svgrepo-com.png'
@@ -10,17 +9,41 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import { Livro } from '../../types/Livros'
-import { Solicitacao } from '@/types/Solicitacao';
+import { Livro } from '@/types/Livros'
+import { Solicitacao } from '@/types/Solicitacao'; // Certifique-se que esta interface inclui 'status: string;'
 
 type RootStackParamList = {
-  Home: undefined; // Home não recebe parâmetros
-  'books/descritiveBookPage': { book: Livro }; // DetalhesDoLivro espera um objeto 'book' do tipo Livro
+  Home: undefined;
+  'books/descritiveBookPage': { book: Livro };
 }
 
+// Funções auxiliares para determinar o texto e a cor do status
+// Podem ser definidas fora do componente para evitar recriação em cada render
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'pendente':
+      return 'Solicitado';
+    case 'aceito':
+      return 'Aceito';
+    default:
+      return status;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pendente':
+      return '#FFA500'; // Laranja para pendente
+    case 'aceito':
+      return '#005613'; // Verde para aceito
+    case 'recusado':
+      return '#FF0000'; // Vermelho para recusado
+    default:
+      return '#333333'; // Cor padrão
+  }
+};
 
 const Home = () => {
-
   const [livros, setLivros] = useState<Livro[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,27 +73,29 @@ const Home = () => {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
 
+      // Verifique se este endpoint realmente retorna o status da solicitação
+      // E se ele filtra por usuário logado (para "Suas solicitações ativas")
       const res = await axios.get("http://192.168.15.15:3001/api/email/solicitacoes/pendentes", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      // O backend deve retornar um array de objetos de solicitação, cada um com um campo 'status'
       setSolicitacoes(res.data.solicitacoes);
     } catch (err) {
       console.error("Erro ao carregar solicitações:", err);
+      // Opcional: setError para exibir na UI
     } finally {
       setIsRefreshing(false);
     }
   };
 
-useEffect(() => {
-  fetchSolicitacoes();
-}, []);
-
+  useEffect(() => {
+    fetchSolicitacoes();
+  }, []);
 
   const handleBookPress = (book: Livro) => {
     navigation.navigate('books/descritiveBookPage', { book: JSON.stringify(book) });
   }
-
 
   if (loading) {
     return (
@@ -102,11 +127,9 @@ useEffect(() => {
             <Text style={{ fontSize: 18 }}>Biblioteca IBNV</Text>
           </View>
           <View style={{ display: 'flex', flexDirection: 'row', width: 80, justifyContent: 'space-between' }}>
-
             <TouchableOpacity>
               <FontAwesome6 name="gear" size={26} color="#005613" />
             </TouchableOpacity>
-
             <TouchableOpacity>
               <MaterialCommunityIcons name="account-circle" size={29} color="#005613" />
             </TouchableOpacity>
@@ -137,110 +160,76 @@ useEffect(() => {
                       style={{ width: 160, height: 230 }}
                     />
                   ) : (
-                    <View>
-                      <Text>Sem imagens</Text>
+                    <View style={styles.noImageContainer}>
+                      <Text style={styles.noImageText}>Sem imagem</Text>
                     </View>
                   )}
                 </TouchableOpacity>
               )}
               keyExtractor={(item) => item.livroId.toString()}
             />
-
-
           </View>
         </View>
 
-        {
-          solicitacoes.length === 0 ? (
-            <View style={styles.MyBooks}>
-              <AntDesign name="warning" size={50} color="#005613" />
-              <Text style={{ color: '#005613' }}>Você não possui requisições ativas</Text>
+        {solicitacoes.length === 0 ? (
+          <View style={styles.MyBooks}>
+            <AntDesign name="warning" size={50} color="#005613" />
+            <Text style={{ color: '#005613' }}>Você não possui requisições ativas</Text>
+            <TouchableOpacity onPress={fetchSolicitacoes}>
+              {isRefreshing ? (
+                <ActivityIndicator size="small" color="black" />
+              ) : (
+                <FontAwesome name="refresh" size={24} color="#005613" />
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.MyBooks}>
+            <View style={{ display: 'flex', flexDirection: 'row', gap: 150 }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Suas solicitações ativas:</Text>
               <TouchableOpacity onPress={fetchSolicitacoes}>
-                  {isRefreshing ? (
-                    <ActivityIndicator size="small" color="black" />
-                  ) : (
-                    <FontAwesome name="refresh" size={24} color="#005613" />
-                  )}
-                </TouchableOpacity>
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color="black" />
+                ) : (
+                  <FontAwesome name="refresh" size={24} color="#005613" />
+                )}
+              </TouchableOpacity>
             </View>
-          ) : (
-            <View style={styles.MyBooks}>
-              <View style={{ display: 'flex', flexDirection: 'row', gap: 150 }}>
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Suas solicitações ativas:</Text>
-                <TouchableOpacity onPress={fetchSolicitacoes}>
-                  {isRefreshing ? (
-                    <ActivityIndicator size="small" color="black" />
-                  ) : (
-                    <FontAwesome name="refresh" size={24} color="#005613" />
-                  )}
-                </TouchableOpacity>
+            <FlatList
+              data={solicitacoes}
+              keyExtractor={(item) => item.id.toString()} // Usar item.id se disponível e único
+              renderItem={({ item }) => (
+                <View style={styles.solicitacaoCard}>
+                  <View style={styles.solicitacaoCardContent}>
+                    {/* SITUAÇÃO DINÂMICA AQUI */}
+                    <View style={styles.statusDisplay}>
+                      <Text style={styles.statusLabel}>SITUAÇÃO: </Text>
+                      <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                        {getStatusText(item.status)}
+                      </Text>
+                    </View>
 
-              </View>
-              <FlatList
-                data={solicitacoes}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item }) => (
-
-                  <View style={{
-                    backgroundColor: '#FFF',
-                    width: 350,
-                    display: 'flex',
-                    flexDirection: 'row',
-                    justifyContent: 'space-around',
-                    alignItems: 'center',
-                    padding: 10,
-                    marginBottom: 10,
-                    borderRadius: 8,
-                    elevation: 2,
-                  }}>
-
-
-
-
-                    <View style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: 15
-                    }}>
-
-                      <View>
-                        <Text>SITUAÇÃO: <Text style={{color: '#005613'}}>Solicitado</Text> </Text>
-                      </View>
-
-                      <View style={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                      }}>
-
-                        <Image
-                          source={{ uri: `http://192.168.15.15:3001/images/${item.IMAGEM_URL}` }}
-                          style={{ width: 60, height: 90 }}
-                        />
-                        <View style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'flex-start',
-                          width: 250,
-                          marginLeft: 15
-                        }}>
-                          <Text><Text style={{ fontWeight: 'bold' }}>Título:</Text> {item.TITULO}</Text>
-                          <Text><Text style={{ fontWeight: 'bold' }}>Autor:</Text> {item.AUTOR}</Text>
-                          <Text><Text style={{ fontWeight: 'bold' }}>Data do pedido:</Text> {item.DATA_SOLICITACAO_FORMATADA}</Text>
-                        </View>
+                    <View style={styles.bookRequestInfo}>
+                      <Image
+                        source={{ uri: `http://192.168.15.15:3001/images/${item.imagem_url}` }}
+                        style={styles.requestedBookImage}
+                        onError={(e) => {
+                          console.log('Erro ao carregar imagem do livro solicitado:', e.nativeEvent.error);
+                          // Fallback para imagem local ou texto "Sem Imagem"
+                        }}
+                      />
+                      <View style={styles.requestedBookDetails}>
+                        <Text><Text style={styles.boldText}>Título:</Text> {item.titulo}</Text>
+                        <Text><Text style={styles.boldText}>Autor:</Text> {item.autor}</Text>
+                        <Text><Text style={styles.boldText}>Data do pedido:</Text> {item.data_solicitacao_formatada}</Text>
                       </View>
                     </View>
                   </View>
-
-                )}
-              />
-            </View>
-          )
-        }
+                </View>
+              )}
+            />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   )
@@ -254,30 +243,24 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     padding: 1
-
-
   },
   header: {
     height: '10%',
     justifyContent: 'space-between',
     alignItems: 'center',
-    display: 'flex',
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     padding: 15
-
   },
   containerBooks: {
     backgroundColor: '#F0F0F0',
     height: '50%'
   },
   topMenuBooks: {
-    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 15,
     alignItems: 'center'
-
   },
   cardBooks: {
     padding: 10
@@ -285,12 +268,10 @@ const styles = StyleSheet.create({
   logoImg: {
     width: 50,
     height: 50,
-
   },
   MyBooks: {
     backgroundColor: '#F0F0F0',
     height: '45%',
-    display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     padding: 15,
@@ -303,7 +284,71 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F0F0F0',
+  },
+  noImageContainer: {
+    width: 160,
+    height: 230,
+    backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    color: '#666',
+    textAlign: 'center',
+  },
+  // Estilos para as solicitações ativas
+  solicitacaoCard: {
+    backgroundColor: '#FFF',
+    width: 350,
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  solicitacaoCardContent: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 15,
+  },
+  statusDisplay: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  bookRequestInfo: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  requestedBookImage: {
+    width: 60,
+    height: 90,
+    borderRadius: 4,
+    marginRight: 15,
+  },
+  requestedBookDetails: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    width: 250,
+    marginLeft: 15,
+  },
+  boldText: {
+    fontWeight: 'bold',
   }
-})
+});
 
-export default Home
+export default Home;

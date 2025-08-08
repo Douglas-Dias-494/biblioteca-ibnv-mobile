@@ -7,27 +7,39 @@ require('dotenv').config();
 async function login(req, res) {
   const { email, senha } = req.body;
 
-  const user = await findUserByEmail(email);
-  if (!user) return res.status(401).json({ erro: 'Usuário não encontrado ou inativo' });
-
-  const senhaValida = await bcrypt.compare(senha, user.SENHA_HASH);
-  if (!senhaValida) return res.status(401).json({ erro: 'Senha incorreta' });
-
-  const token = jwt.sign({ id: user.ID, nome: user.NOME, role: user.ROLE }, process.env.JWT_SECRET, {
-    expiresIn: '2h',
-  });
-
-  console.log("Role do usuário", user.ROLE);
+  try {
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ erro: 'Usuário não encontrado ou inativo' });
+    }
   
-
-  res.json({ token, usuario: {
+    // Acessa a senha do usuário usando o nome da coluna em minúsculas
+    const senhaValida = await bcrypt.compare(senha, user.senha_hash);
+    if (!senhaValida) {
+      return res.status(401).json({ erro: 'Senha incorreta' });
+    }
   
-    id: user.ID, 
-    nome: user.NOME,
-    email: user.EMAIL,
-    role: user.ROLE
+    // Cria o token JWT com as propriedades em minúsculas
+    const token = jwt.sign({ 
+      id: user.id, 
+      nome: user.nome, 
+      role: user.role 
+    }, process.env.JWT_SECRET, {
+      expiresIn: '2h',
+    });
   
-  } });
+    console.log("Role do usuário", user.role);
+  
+    res.json({ token, usuario: {
+      id: user.id, 
+      nome: user.nome,
+      email: user.email,
+      role: user.role
+    } });
+  } catch (error) {
+    console.error('Erro no processo de login:', error);
+    res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
 }
 
 module.exports = {

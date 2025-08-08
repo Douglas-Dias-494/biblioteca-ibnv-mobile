@@ -2,69 +2,79 @@
 const express = require('express');
 const router = express.Router();
 const verificarToken = require('../middleware/authMiddleware');
-const oracledb = require('oracledb')
+const db = require('../config/database'); // Importa o módulo de banco de dados
 
-// Configuração da conexão com o Oracle (substitua pelos seus dados)
-const dbConfig = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  connectString: process.env.DB_CONNECT_STRING
-};
-
-// Função assíncrona para buscar os livros disponíveis do Oracle
+// Função assíncrona para buscar os livros disponíveis do PostgreSQL
 async function buscarLivrosDisponiveis() {
-  let connection;
+  let client;
   try {
-    connection = await oracledb.getConnection(dbConfig);
-    const sql = `SELECT ID, TITULO, AUTOR, EDITORA, ANO_PUBLICACAO, DESCRICAO, CATEGORIA,  IMAGEM_URL, PAGINAS FROM LIVROS`;
-    const result = await connection.execute(sql, [], {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    client = await db.getConnection();
+    const sql = `SELECT id, titulo, autor, editora, ano_publicacao, descricao, categoria, imagem_url, paginas FROM livros`;
+    const result = await client.query(sql);
+
     const livros = result.rows.map(row => ({
-      livroId: row.ID,
-      titulo: row.TITULO,
-      autor: row.AUTOR,
-      editora: row.EDITORA,
-      anoPublicacao: row.ANO_PUBLICACAO,
-      descricao: row.DESCRICAO,
-      categoria: row.CATEGORIA,
-      imagem: row.IMAGEM_URL,
-      paginas: row.PAGINAS
+      livroId: row.id,
+      titulo: row.titulo,
+      autor: row.autor,
+      editora: row.editora,
+      anoPublicacao: row.ano_publicacao,
+      descricao: row.descricao,
+      categoria: row.categoria,
+      imagem: row.imagem_url,
+      paginas: row.paginas
     }));
-    //console.log('Livros Mapeados:', livros); // Log dos livros mapeados
     return livros;
   } catch (err) {
-    console.error('Erro ao buscar livros do Oracle:', err);
+    console.error('Erro ao buscar livros do PostgreSQL:', err);
     throw err;
   } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Erro ao fechar a conexão com o Oracle:', err);
-      }
+    if (client) {
+      client.release();
     }
   }
 }
 
-// Simulação de reserva
-router.post('/reservar/:idLivro', verificarToken, (req, res) => {
-    console.log('Usuário autenticado:', req.usuario);
-    
-  const idLivro = req.params.idLivro;
-  const idUsuario = req.usuario.nome; // do JWT
+// Rota para reservar um livro
+router.post('/reservar/:idLivro', verificarToken, async (req, res) => {
+  const { idLivro } = req.params;
+  const idUsuario = req.usuario.id; // Supondo que o ID do usuário está no token JWT
 
-  // Aqui você faria a lógica de salvar a reserva no banco
-  res.json({ mensagem: `Livro ${idLivro} reservado por usuário ${idUsuario}` });
+  if (!idUsuario) {
+    return res.status(401).json({ mensagem: 'ID do usuário não encontrado no token.' });
+  }
+
+  let client;
+  try {
+    client = await db.getConnection();
+    const sql = `
+      INSERT INTO reservas (id_usuario, id_livro)
+      VALUES ($1, $2)
+      RETURNING id_reserva, data_reserva
+    `;
+    const values = [idUsuario, idLivro];
+    const result = await client.query(sql, values);
+
+    res.status(201).json({
+      mensagem: `Livro ${idLivro} reservado com sucesso.`,
+      reserva: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Erro ao reservar livro:', err);
+    res.status(500).json({ mensagem: 'Erro interno ao tentar reservar o livro.' });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 });
 
 // Endpoint para listar todos os livros disponíveis
 router.get('/disponiveis', async (req, res) => {
- try {
+  try {
     const livros = await buscarLivrosDisponiveis();
     res.json(livros);
   } catch (err) {
-    res.status(500).json({ mensagem: 'Erro ao buscar livros disponíveis.' });
+    res.status(500).json({ mensagem: 'Erro ao buscar livros disponíveis.' }, err);
   }
 });
 
